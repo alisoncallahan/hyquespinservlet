@@ -10,20 +10,10 @@
   	<servlet-name>HyQueSPINServlet</servlet-name>
   	<servlet-class>org.semanticscience.hyquespinservlet.server.HyQueSPINExecutor</servlet-class>
   </servlet>
-  <servlet>
-  	<servlet-name>HelloWorldServlet</servlet-name>
-  	<display-name>HelloWorldServlet</display-name>
-  	<description></description>
-  	<servlet-class>org.semanticscience.hyquespinservlet.server.HelloWorldServlet</servlet-class>
-  </servlet>
-  
+ 
   <servlet-mapping>
   	<servlet-name>HyQueSPINServlet</servlet-name>
   	<url-pattern>/HyQueSPINServlet/hyque/spin</url-pattern>
-  </servlet-mapping>
-  <servlet-mapping>
-  	<servlet-name>HelloWorldServlet</servlet-name>
-  	<url-pattern>/HelloWorldServlet</url-pattern>
   </servlet-mapping>
   
   <!-- Default page to serve -->
