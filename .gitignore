@@ -1,6 +1,13 @@
 *.class
 
+*target*
+
+*gwt-unitCache*
+
+
+
 # Package Files #
 *.jar
 *.war
 *.ear
+
