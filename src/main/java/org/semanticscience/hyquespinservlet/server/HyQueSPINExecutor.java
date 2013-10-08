@@ -43,7 +43,7 @@ public class HyQueSPINExecutor extends HttpServlet {
 			.createOntologyModel(OntModelSpec.OWL_MEM);
 
 	public enum Format {
-		JSON, RDF
+		JSON, RDFXML
 	}
 
 	@Override
@@ -67,12 +67,12 @@ public class HyQueSPINExecutor extends HttpServlet {
 		try {
 			out = resp.getWriter();
 
-			Format format = Format.RDF;
+			Format format = Format.RDFXML;
 			resp.setContentType("text/xml");
 
 			String rules = req.getParameter(rulesParameter);
 
-			//read SPIN rules into hyqueSPINModel and spinOnlyModel
+			// read SPIN rules into hyqueSPINModel and spinOnlyModel
 			hyqueSPINModel.read(rules);
 			spinOnlyModel.read(rules);
 
@@ -121,10 +121,31 @@ public class HyQueSPINExecutor extends HttpServlet {
 				inputModel = hyp.makeHypothesisModel();
 			} else if (req.getParameter(inputFormatParameter) != null
 					&& req.getParameter(inputFormatParameter).toLowerCase()
-							.equals("rdf")) {
+							.equals("rdfxml")) {
 				inputModel = ModelFactory.createDefaultModel();
 				InputStream is = new ByteArrayInputStream(input.getBytes());
 				inputModel.read(is, null);
+				is.close();
+			} else if (req.getParameter(inputFormatParameter) != null
+					&& req.getParameter(inputFormatParameter).toLowerCase()
+							.equals("n3")) {
+				inputModel = ModelFactory.createDefaultModel();
+				InputStream is = new ByteArrayInputStream(input.getBytes());
+				inputModel.read(is, null, "N3");
+				is.close();
+			} else if (req.getParameter(inputFormatParameter) != null
+					&& req.getParameter(inputFormatParameter).toLowerCase()
+							.equals("ntriple")) {
+				inputModel = ModelFactory.createDefaultModel();
+				InputStream is = new ByteArrayInputStream(input.getBytes());
+				inputModel.read(is, null, "N-TRIPLE");
+				is.close();
+			} else if (req.getParameter(inputFormatParameter) != null
+					&& req.getParameter(inputFormatParameter).toLowerCase()
+							.equals("ttl")) {
+				inputModel = ModelFactory.createDefaultModel();
+				InputStream is = new ByteArrayInputStream(input.getBytes());
+				inputModel.read(is, null, "TTL");
 				is.close();
 			}
 
