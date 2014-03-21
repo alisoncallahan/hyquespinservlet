@@ -35,6 +35,8 @@ public class HyQueSPINExecutor extends HttpServlet {
 	static String jsTreeParameter = "jstree";
 	static String tkiParameter = "tki";
 	static String rulesParameter = "spinFile";
+	static String rulesFormatParameter = "spinFileFormat";
+	static String evaluationOnlyParameter = "evaluationOnly";
 	
 	public enum Format {
 		JSON, RDFXML
@@ -51,6 +53,9 @@ public class HyQueSPINExecutor extends HttpServlet {
 
 		PrintWriter out = null;
 		String input = null;
+		String inputFormat = null;
+		String[] ruleFiles = null;
+		String ruleFormat = null;
 		Model evaluationModel = null;
 		
 		// create OntModel
@@ -61,7 +66,7 @@ public class HyQueSPINExecutor extends HttpServlet {
 		boolean tki = false;
 		
 		boolean jstree = false;
-
+		
 		try {
 			out = resp.getWriter();
 
@@ -69,19 +74,59 @@ public class HyQueSPINExecutor extends HttpServlet {
 			resp.setContentType("text/xml");
 
 			//String rules = req.getParameter(rulesParameter);
-			String[] ruleFiles = req.getParameterValues(rulesParameter);
+			if(req.getParameterValues(rulesParameter) != null){
+				ruleFiles = req.getParameterValues(rulesParameter);
+			} else {
+				out.print("Provide the URL  of a file containing the SPIN rules RDF using the spinFile parameter");
+			}
 			
+			if(req.getParameter(rulesFormatParameter) != null){
+				if(req.getParameter(rulesFormatParameter).equals("rdfxml")){
+					ruleFormat = "RDF/XML";
+				} else if(req.getParameter(rulesFormatParameter).equals("n3")){
+					ruleFormat = "N3";
+				} else if(req.getParameter(rulesFormatParameter).equals("ntriple")){
+					ruleFormat = "N-TRIPLE";
+				} else if(req.getParameter(rulesFormatParameter).equals("ttl")){
+					ruleFormat = "TTL";
+				}
+			} else {
+				out.print("Specify the format of the input SPIN RDF using the spinFileFormat parameter - rdfxml, n3, ntriple, or ttl");
+			}
+			
+			if(req.getParameter(inputFormatParameter) != null){
+				if(req.getParameter(inputFormatParameter).equals("rdfxml")){
+					inputFormat = "RDF/XML";
+				} else if(req.getParameter(inputFormatParameter).equals("n3")){
+					inputFormat = "N3";
+				} else if(req.getParameter(inputFormatParameter).equals("ntriple")){
+					inputFormat = "N-TRIPLE";
+				} else if(req.getParameter(inputFormatParameter).equals("ttl")){
+					inputFormat = "TTL";
+				} else if(req.getParameter(inputFormatParameter).equals("json")){
+					inputFormat = "JSON";
+				}
+			} else {
+				out.print("Specify the format of the input hypothesis RDF using the inputFormat parameter - rdfxml, n3, ntriple, or ttl");
+			}
 			hyqueSPINModel = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM);
 			spinOnlyModel = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM);
 			
 			// add system triples
 			hyqueSPINModel.add(SystemTriples.getVocabularyModel());
 
+			
 			// read SPIN rules into hyqueSPINModel and spinOnlyModel
+			if (req.getParameter(outputFormatParameter) != null
+					&& req.getParameter(outputFormatParameter).toLowerCase()
+							.equals("json")) {
+				format = Format.JSON;
+				resp.setContentType("application/json");
+			}
 			for (int i = 0; i < ruleFiles.length; i++) {
 				String rules = ruleFiles[i];
-				hyqueSPINModel.read(rules);
-				spinOnlyModel.read(rules);
+				hyqueSPINModel.read(rules, null, ruleFormat);
+				spinOnlyModel.read(rules, null, ruleFormat);
 			}
 			
 			if (req.getParameter(inputFileParameter) != null
@@ -124,46 +169,17 @@ public class HyQueSPINExecutor extends HttpServlet {
 				tki = true;
 			}
 
-			Model inputModel = null;
-
-			if(req.getParameter(inputFormatParameter) != null && req.getParameter(inputFormatParameter).toLowerCase()
-					.equals("json") && tki == true ){
+			Model inputModel = null;	
+			if(inputFormat == "JSON" && tki == true ){
 				Hypothesis hyp = new Hypothesis(input);
 				inputModel = hyp.makeTKIHypothesisModel();
-			} else if (req.getParameter(inputFormatParameter) != null
-					&& req.getParameter(inputFormatParameter).toLowerCase()
-							.equals("json") && tki == false) {
+			} else if (inputFormat == "JSON" && tki == false) {
 				Hypothesis hyp = new Hypothesis(input);
 				inputModel = hyp.makeHypothesisModel();
-			} else if (req.getParameter(inputFormatParameter) != null
-					&& req.getParameter(inputFormatParameter).toLowerCase()
-							.equals("rdfxml")) {
+			} else {
 				inputModel = ModelFactory.createDefaultModel();
-				InputStream is = new ByteArrayInputStream(input.getBytes());
-				inputModel.read(is, null);
-				is.close();
-			} else if (req.getParameter(inputFormatParameter) != null
-					&& req.getParameter(inputFormatParameter).toLowerCase()
-							.equals("n3")) {
-				inputModel = ModelFactory.createDefaultModel();
-				InputStream is = new ByteArrayInputStream(input.getBytes());
-				inputModel.read(is, null, "N3");
-				is.close();
-			} else if (req.getParameter(inputFormatParameter) != null
-					&& req.getParameter(inputFormatParameter).toLowerCase()
-							.equals("ntriple")) {
-				inputModel = ModelFactory.createDefaultModel();
-				InputStream is = new ByteArrayInputStream(input.getBytes());
-				inputModel.read(is, null, "N-TRIPLE");
-				is.close();
-			} else if (req.getParameter(inputFormatParameter) != null
-					&& req.getParameter(inputFormatParameter).toLowerCase()
-							.equals("ttl")) {
-				inputModel = ModelFactory.createDefaultModel();
-				InputStream is = new ByteArrayInputStream(input.getBytes());
-				inputModel.read(is, null, "TTL");
-				is.close();
-			}
+				inputModel.read(input, null, inputFormat);
+			} 
 			// add input model to SPIN model
 			hyqueSPINModel.addSubModel(inputModel);
 
@@ -182,9 +198,11 @@ public class HyQueSPINExecutor extends HttpServlet {
 
 			// add input model and SPIN rules to evaluation model, so all data
 			// (provided by user and generated by HyQue) is sent back to user
-			evaluationModel.add(inputModel);
-			evaluationModel.add(hyqueSPINModel);
-
+			if(req.getParameter(evaluationOnlyParameter) != null && req.getParameter(evaluationOnlyParameter) == "false" ){
+				evaluationModel.add(inputModel);
+				evaluationModel.add(hyqueSPINModel);
+			}
+			
 			makeOutput(out, format, evaluationModel, spinOnlyModel, jstree, tki);
 
 			// remove input and evaluation models from hyqueSPINModel
